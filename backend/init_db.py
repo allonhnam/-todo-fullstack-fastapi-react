@@ -7,10 +7,13 @@ from datetime import datetime
 from uuid import uuid4
 import os
 from dotenv import load_dotenv
-from models import TABLE_NAME, TABLE_SCHEMA, AWS_REGION
 
 # Load environment variables from .env
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+
+# Table configuration
+TABLE_NAME = "Todo"
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 
 
 def get_dynamodb_client():
@@ -47,7 +50,19 @@ def create_table_if_not_exists():
             # Table doesn't exist, create it
             try:
                 print(f"Creating table '{TABLE_NAME}'...")
-                dynamodb_client.create_table(**TABLE_SCHEMA)
+                table_schema = {
+                    "TableName": TABLE_NAME,
+                    "KeySchema": [
+                        {"AttributeName": "user_id", "KeyType": "HASH"},
+                        {"AttributeName": "todo_id", "KeyType": "RANGE"}
+                    ],
+                    "AttributeDefinitions": [
+                        {"AttributeName": "user_id", "AttributeType": "S"},
+                        {"AttributeName": "todo_id", "AttributeType": "S"}
+                    ],
+                    "BillingMode": "PAY_PER_REQUEST"
+                }
+                dynamodb_client.create_table(**table_schema)
                 
                 # Wait for table to be created
                 waiter = dynamodb_client.get_waiter("table_exists")
