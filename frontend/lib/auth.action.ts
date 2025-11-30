@@ -174,7 +174,13 @@ export async function signIn(params: SignInParams): Promise<AuthResponse> {
 // Sign out user by clearing the session cookie
 export async function signOut() {
   const cookieStore = await cookies();
-  cookieStore.delete("session");
+  cookieStore.set("session", "", {
+    maxAge: 0,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    sameSite: "lax",
+  });
 }
 
 // Get current user from session cookie
@@ -190,8 +196,8 @@ export async function getCurrentUser(): Promise<User | null> {
 
     // Check if token is expired
     if (decoded.exp && decoded.exp * 1000 < Date.now()) {
-      // Token expired, clear it
-      cookieStore.delete("session");
+      // Token expired - return null (cookie will be ignored)
+      // Cookie deletion should be handled by explicit signOut() call
       return null;
     }
 
@@ -201,8 +207,8 @@ export async function getCurrentUser(): Promise<User | null> {
   } catch (error) {
     console.error("Error decoding token:", error);
 
-    // Invalid token, clear it
-    cookieStore.delete("session");
+    // Invalid token - return null (cookie will be ignored)
+    // Cookie deletion should be handled by explicit signOut() call
     return null;
   }
 }
