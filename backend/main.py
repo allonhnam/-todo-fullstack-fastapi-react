@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from jose import jwt
-from passlib.context import CryptContext
+import bcrypt
 from datetime import datetime, timedelta
 from typing import Annotated
 from pydantic import BaseModel
@@ -34,7 +34,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Bcrypt configuration
+BCRYPT_ROUNDS = 12
 
 def get_user_by_username(username: str):
     try:
@@ -43,15 +44,35 @@ def get_user_by_username(username: str):
     except User.DoesNotExist:
             return None
 
+def hash_password(password: str) -> str:
+    """Hash a password using bcrypt, handling the 72-byte limit."""
+    # Bcrypt has a 72-byte limit, so we need to truncate if necessary
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        password_bytes = password_bytes[:72]
+    
+    # Generate salt and hash
+    salt = bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    # Return as string for storage
+    return hashed.decode('utf-8')
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against a hash."""
+    # Bcrypt has a 72-byte limit, so we need to truncate if necessary
+    password_bytes = plain_password.encode('utf-8')
+    if len(password_bytes) > 72:
+        password_bytes = password_bytes[:72]
+    
+    # Verify password
+    hashed_bytes = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(password_bytes, hashed_bytes)
+
 def create_user(username: str, password: str):
-    hashed_password = pwd_context.hash(password)
+    hashed_password = hash_password(password)
     user = User(username=username, hashed_password=hashed_password)
     user.save()
     return user
-
-def verify_password(plain_password: str, hashed_password: str):
-    """Verify a password against a hash."""
-    return pwd_context.verify(plain_password, hashed_password)
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     """Create a JWT access token."""

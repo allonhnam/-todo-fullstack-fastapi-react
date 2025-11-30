@@ -12,7 +12,8 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 # Table configuration
-TABLE_NAME = "Todo"
+TODO_TABLE_NAME = "Todo"
+USER_TABLE_NAME = "User"
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 
 
@@ -36,38 +37,32 @@ def get_dynamodb_resource():
     )
 
 
-def create_table_if_not_exists():
-    """Create the todos table if it doesn't exist."""
+def create_table_if_not_exists(table_name, key_schema, attribute_definitions):
+    """Create a DynamoDB table if it doesn't exist."""
     dynamodb_client = get_dynamodb_client()
     
     try:
         # Check if table exists
-        dynamodb_client.describe_table(TableName=TABLE_NAME)
-        print(f"Table '{TABLE_NAME}' already exists.")
+        dynamodb_client.describe_table(TableName=table_name)
+        print(f"Table '{table_name}' already exists.")
         return True
     except ClientError as e:
         if e.response["Error"]["Code"] == "ResourceNotFoundException":
             # Table doesn't exist, create it
             try:
-                print(f"Creating table '{TABLE_NAME}'...")
+                print(f"Creating table '{table_name}'...")
                 table_schema = {
-                    "TableName": TABLE_NAME,
-                    "KeySchema": [
-                        {"AttributeName": "user_id", "KeyType": "HASH"},
-                        {"AttributeName": "todo_id", "KeyType": "RANGE"}
-                    ],
-                    "AttributeDefinitions": [
-                        {"AttributeName": "user_id", "AttributeType": "S"},
-                        {"AttributeName": "todo_id", "AttributeType": "S"}
-                    ],
+                    "TableName": table_name,
+                    "KeySchema": key_schema,
+                    "AttributeDefinitions": attribute_definitions,
                     "BillingMode": "PAY_PER_REQUEST"
                 }
                 dynamodb_client.create_table(**table_schema)
                 
                 # Wait for table to be created
                 waiter = dynamodb_client.get_waiter("table_exists")
-                waiter.wait(TableName=TABLE_NAME)
-                print(f"Table '{TABLE_NAME}' created successfully.")
+                waiter.wait(TableName=table_name)
+                print(f"Table '{table_name}' created successfully.")
                 return True
             except ClientError as create_error:
                 print(f"Error creating table: {create_error}")
@@ -77,10 +72,38 @@ def create_table_if_not_exists():
             return False
 
 
+def create_todo_table():
+    """Create the Todo table if it doesn't exist."""
+    return create_table_if_not_exists(
+        table_name=TODO_TABLE_NAME,
+        key_schema=[
+            {"AttributeName": "user_id", "KeyType": "HASH"},
+            {"AttributeName": "todo_id", "KeyType": "RANGE"}
+        ],
+        attribute_definitions=[
+            {"AttributeName": "user_id", "AttributeType": "S"},
+            {"AttributeName": "todo_id", "AttributeType": "S"}
+        ]
+    )
+
+
+def create_user_table():
+    """Create the User table if it doesn't exist."""
+    return create_table_if_not_exists(
+        table_name=USER_TABLE_NAME,
+        key_schema=[
+            {"AttributeName": "username", "KeyType": "HASH"}
+        ],
+        attribute_definitions=[
+            {"AttributeName": "username", "AttributeType": "S"}
+        ]
+    )
+
+
 def seed_test_data():
     """Seed the table with test data."""
     dynamodb = get_dynamodb_resource()
-    table = dynamodb.Table(TABLE_NAME)
+    table = dynamodb.Table(TODO_TABLE_NAME)
     
     test_data = [
         {
@@ -130,7 +153,7 @@ def seed_test_data():
         }
     ]
     
-    print(f"Seeding test data into '{TABLE_NAME}'...")
+    print(f"Seeding test data into '{TODO_TABLE_NAME}'...")
     for item in test_data:
         try:
             table.put_item(Item=item)
@@ -145,7 +168,13 @@ def main():
     """Main function to initialize database."""
     print("Initializing DynamoDB...")
     
-    if create_table_if_not_exists():
+    # Create User table
+    user_table_created = create_user_table()
+    
+    # Create Todo table
+    todo_table_created = create_todo_table()
+    
+    if user_table_created and todo_table_created:
         seed_test_data()
         print("\nDatabase initialization completed successfully!")
     else:
