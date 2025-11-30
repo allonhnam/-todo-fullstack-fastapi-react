@@ -1,19 +1,31 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
-from jose import jwt
+from jose import jwt, JWTError
 import bcrypt
 from datetime import datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Optional
 from pydantic import BaseModel
-from models import User
+from models import User, Todo
 import os
+import uuid
 
 
 class UserCreate(BaseModel):
     """User creation request model."""
     username: str
     password: str
+
+class TodoCreate(BaseModel):
+    """Todo creation request model."""
+    title: str
+    description: Optional[str] = None
+
+class TodoUpdate(BaseModel):
+    """Todo update request model."""
+    title: Optional[str] = None
+    description: Optional[str] = None
+    completed: Optional[bool] = None
 
 SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 ALGORITHM = "HS256"
@@ -85,6 +97,49 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+def get_current_user(authorization: Optional[str] = Header(None)):
+    """Get current user from JWT token."""
+    if not authorization:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    try:
+        # Extract token from "Bearer <token>"
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid authentication scheme",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except ValueError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except JWTError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return username
+
 @app.post("/register")
 async def register_user(user: UserCreate):
     try:
@@ -125,4 +180,115 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     except Exception as e:
         print(f"Error during login: {e}")
         raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
+
+# Todo endpoints
+@app.get("/todos")
+async def get_todos(current_user: str = Depends(get_current_user)):
+    """Get all todos for the current user."""
+    try:
+        todos = Todo.query(current_user)
+        return [
+            {
+                "id": todo.todo_id,
+                "title": todo.title,
+                "description": todo.description,
+                "completed": todo.completed,
+                "created_at": todo.created_at.isoformat() if todo.created_at else None,
+                "updated_at": todo.updated_at.isoformat() if todo.updated_at else None,
+            }
+            for todo in todos
+        ]
+    except Exception as e:
+        print(f"Error fetching todos: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch todos: {str(e)}")
+
+@app.post("/todos")
+async def create_todo(todo: TodoCreate, current_user: str = Depends(get_current_user)):
+    """Create a new todo."""
+    try:
+        todo_id = str(uuid.uuid4())
+        now = datetime.utcnow()
+        new_todo = Todo(
+            user_id=current_user,
+            todo_id=todo_id,
+            title=todo.title,
+            description=todo.description,
+            completed=False,
+            created_at=now,
+            updated_at=now,
+        )
+        new_todo.save()
+        return {
+            "id": new_todo.todo_id,
+            "title": new_todo.title,
+            "description": new_todo.description,
+            "completed": new_todo.completed,
+            "created_at": new_todo.created_at.isoformat() if new_todo.created_at else None,
+            "updated_at": new_todo.updated_at.isoformat() if new_todo.updated_at else None,
+        }
+    except Exception as e:
+        print(f"Error creating todo: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create todo: {str(e)}")
+
+@app.get("/todos/{todo_id}")
+async def get_todo(todo_id: str, current_user: str = Depends(get_current_user)):
+    """Get a specific todo by ID."""
+    try:
+        todo = Todo.get(current_user, todo_id)
+        return {
+            "id": todo.todo_id,
+            "title": todo.title,
+            "description": todo.description,
+            "completed": todo.completed,
+            "created_at": todo.created_at.isoformat() if todo.created_at else None,
+            "updated_at": todo.updated_at.isoformat() if todo.updated_at else None,
+        }
+    except Todo.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Todo not found")
+    except Exception as e:
+        print(f"Error fetching todo: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch todo: {str(e)}")
+
+@app.put("/todos/{todo_id}")
+async def update_todo(todo_id: str, todo_update: TodoUpdate, current_user: str = Depends(get_current_user)):
+    """Update a specific todo by ID."""
+    try:
+        todo = Todo.get(current_user, todo_id)
+        
+        if todo_update.title is not None:
+            todo.title = todo_update.title
+        if todo_update.description is not None:
+            todo.description = todo_update.description
+        if todo_update.completed is not None:
+            todo.completed = todo_update.completed
+        
+        todo.updated_at = datetime.utcnow()
+        todo.save()
+        
+        return {
+            "id": todo.todo_id,
+            "title": todo.title,
+            "description": todo.description,
+            "completed": todo.completed,
+            "created_at": todo.created_at.isoformat() if todo.created_at else None,
+            "updated_at": todo.updated_at.isoformat() if todo.updated_at else None,
+        }
+    except Todo.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Todo not found")
+    except Exception as e:
+        print(f"Error updating todo: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update todo: {str(e)}")
+
+@app.delete("/todos/{todo_id}")
+async def delete_todo(todo_id: str, current_user: str = Depends(get_current_user)):
+    """Delete a specific todo by ID."""
+    try:
+        todo = Todo.get(current_user, todo_id)
+        todo.delete()
+        return {"message": "Todo deleted successfully"}
+    except Todo.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Todo not found")
+    except Exception as e:
+        print(f"Error deleting todo: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete todo: {str(e)}")
 

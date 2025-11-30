@@ -18,6 +18,9 @@ const Page = async () => {
         </div>
 
         <div className="flex gap-4">
+          <Button asChild size="lg">
+            <Link href="/todos">View Todos</Link>
+          </Button>
           <SignOutButton />
         </div>
       </div>
