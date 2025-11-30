@@ -1,0 +1,10 @@
+bcrypt
+boto3
+cryptography
+fastapi
+pynamodb
+python-dotenv
+python-jose
+python-multipart
+uvicorn
+passlib

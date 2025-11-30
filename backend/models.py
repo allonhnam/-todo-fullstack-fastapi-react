@@ -1,56 +1,39 @@
 """
-DynamoDB table models for the todo application.
+PynamoDB models for the todo application.
 """
-from datetime import datetime
-from typing import Optional
-from uuid import UUID, uuid4
-from pydantic import BaseModel, Field
+from pynamodb.models import Model
+from pynamodb.attributes import UnicodeAttribute, BooleanAttribute, UTCDateTimeAttribute
+import os
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 
-class Todo(BaseModel):
-    """Todo item model."""
-    user_id: str = Field(..., description="Partition key - user identifier")
-    todo_id: UUID = Field(default_factory=uuid4, description="Sort key - unique todo identifier")
-    title: str = Field(..., description="Todo title")
-    description: Optional[str] = Field(None, description="Todo description")
-    completed: bool = Field(default=False, description="Completion status")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
-    updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
-
-    class Config:
-        json_encoders = {
-            UUID: str,
-            datetime: lambda v: v.isoformat()
-        }
+class User(Model):
+    """User model using PynamoDB."""
+    class Meta:
+        table_name = "User"
+        region = os.getenv("AWS_REGION", "us-east-1")
+        aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
+        aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+    
+    username = UnicodeAttribute(hash_key=True)
+    hashed_password = UnicodeAttribute()
 
 
-# DynamoDB configuration
-TABLE_NAME = "Todo"
-AWS_REGION = "us-east-1"
-
-# DynamoDB table schema definition
-TABLE_SCHEMA = {
-    "TableName": TABLE_NAME,
-    "KeySchema": [
-        {
-            "AttributeName": "user_id",
-            "KeyType": "HASH"  # Partition key
-        },
-        {
-            "AttributeName": "todo_id",
-            "KeyType": "RANGE"  # Sort key
-        }
-    ],
-    "AttributeDefinitions": [
-        {
-            "AttributeName": "user_id",
-            "AttributeType": "S"  # String
-        },
-        {
-            "AttributeName": "todo_id",
-            "AttributeType": "S"  # String (UUID stored as string)
-        }
-    ],
-    "BillingMode": "PAY_PER_REQUEST"  # On-demand billing
-}
+class Todo(Model):
+    """Todo model using PynamoDB."""
+    class Meta:
+        table_name = "Todo"
+        region = os.getenv("AWS_REGION", "us-east-1")
+        aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
+        aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+    
+    user_id = UnicodeAttribute(hash_key=True)
+    todo_id = UnicodeAttribute(range_key=True)
+    title = UnicodeAttribute()
+    description = UnicodeAttribute(null=True)
+    completed = BooleanAttribute(default=False)
+    created_at = UTCDateTimeAttribute()
+    updated_at = UTCDateTimeAttribute()
 
