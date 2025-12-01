@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { getTodos } from "@/lib/todo.action";
+import { getTodos, type Todo } from "@/lib/todo.action";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth.action";
 import { CheckCircle2, Circle, Plus } from "lucide-react";
@@ -12,7 +12,7 @@ const TodosPage = async () => {
     redirect("/sign-in");
   }
 
-  let todos = [];
+  let todos: Todo[] = [];
   try {
     todos = await getTodos();
   } catch (error) {
