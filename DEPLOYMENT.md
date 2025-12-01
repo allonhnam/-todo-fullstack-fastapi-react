@@ -4,24 +4,22 @@
 
 This project has a monorepo structure with the Next.js frontend in the `frontend` directory.
 
-### Option 1: Using vercel.json (Recommended)
+### Required: Configure Root Directory in Vercel Dashboard
 
-The `vercel.json` file in the root directory is already configured to deploy the frontend. Vercel will automatically:
-- Set the root directory to `frontend`
-- Detect Next.js framework
-- Run build commands from the frontend directory
-
-### Option 2: Manual Configuration in Vercel Dashboard
-
-If you prefer to configure in the Vercel dashboard:
+Since `rootDirectory` is not a valid property in `vercel.json`, you **must** configure it in the Vercel dashboard:
 
 1. Go to your project settings in Vercel
-2. Under "Build & Development Settings":
-   - **Root Directory**: Set to `frontend`
-   - **Framework Preset**: Next.js (auto-detected)
-   - **Build Command**: `npm run build` (or leave empty for auto-detection)
-   - **Output Directory**: `.next` (or leave empty for auto-detection)
-   - **Install Command**: `npm install` (or leave empty for auto-detection)
+2. Navigate to **Settings** → **General**
+3. Under **Root Directory**, click **Edit**
+4. Set the root directory to: `frontend`
+5. Click **Save**
+
+Vercel will automatically:
+- Detect Next.js framework
+- Use default build commands (`npm run build`)
+- Set the correct output directory (`.next`)
+
+**Note**: The root directory setting is project-wide and applies to all deployments.
 
 ## Required Environment Variables
 
