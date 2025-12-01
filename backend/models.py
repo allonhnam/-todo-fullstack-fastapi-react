@@ -14,8 +14,8 @@ class User(Model):
     class Meta:
         table_name = "User"
         region = os.getenv("AWS_REGION", "us-east-1")
-        aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-        aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+        aws_access_key_id = os.getenv("MY_AWS_ACCESS_KEY_ID")
+        aws_secret_access_key = os.getenv("MY_AWS_SECRET_ACCESS_KEY")
     
     username = UnicodeAttribute(hash_key=True)
     hashed_password = UnicodeAttribute()
@@ -26,8 +26,8 @@ class Todo(Model):
     class Meta:
         table_name = "Todo"
         region = os.getenv("AWS_REGION", "us-east-1")
-        aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-        aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+        aws_access_key_id = os.getenv("MY_AWS_ACCESS_KEY_ID")
+        aws_secret_access_key = os.getenv("MY_AWS_SECRET_ACCESS_KEY")
     
     user_id = UnicodeAttribute(hash_key=True)
     todo_id = UnicodeAttribute(range_key=True)

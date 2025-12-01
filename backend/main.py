@@ -27,7 +27,7 @@ class TodoUpdate(BaseModel):
     description: Optional[str] = None
     completed: Optional[bool] = None
 
-SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+SECRET_KEY = os.getenv("MY_AWS_SECRET_ACCESS_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
