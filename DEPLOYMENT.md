@@ -38,16 +38,38 @@ The backend (FastAPI) needs to be deployed separately. Options:
 - Use Vercel Serverless Functions (requires adaptation)
 - Deploy to a VPS or cloud instance
 
-Make sure the backend CORS settings allow requests from your Vercel frontend domain.
+### Backend CORS Configuration
+
+The backend CORS has been updated to accept origins from environment variables. When deploying your backend:
+
+1. Set the `ALLOWED_ORIGINS` environment variable with your Vercel domain(s):
+   ```
+   ALLOWED_ORIGINS=https://your-app.vercel.app,https://your-custom-domain.com
+   ```
+
+2. The backend will automatically allow:
+   - `http://localhost:3000` (local development)
+   - `http://localhost:8000` (local backend)
+   - Any domains you add to `ALLOWED_ORIGINS`
+
+3. **Important**: Add your Vercel preview and production domains to `ALLOWED_ORIGINS`
 
 ## Troubleshooting
 
 ### 404 NOT_FOUND Error
 
-If you're getting a 404 error:
+**This is the most common issue!** If you're getting a 404 error on your Vercel deployment:
 
-1. **Check Root Directory**: Ensure Vercel is set to use `frontend` as the root directory
+1. **CRITICAL: Set Root Directory in Vercel Dashboard**
+   - Go to your Vercel project → **Settings** → **General**
+   - Scroll to **Root Directory**
+   - Click **Edit** and set it to: `frontend`
+   - Click **Save**
+   - **Redeploy** your project (push a new commit or redeploy from dashboard)
+
 2. **Check Build Logs**: Look for any build errors in the Vercel deployment logs
+   - If you see "Cannot find module" or similar errors, the root directory is likely wrong
+
 3. **Verify Routes**: Ensure all route files exist:
    - `app/page.tsx` (home page)
    - `app/todos/page.tsx` (todos list)
