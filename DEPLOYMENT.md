@@ -4,22 +4,30 @@
 
 This project has a monorepo structure with the Next.js frontend in the `frontend` directory.
 
-### Required: Configure Root Directory in Vercel Dashboard
+### ⚠️ CRITICAL: Configure Root Directory in Vercel Dashboard
 
-Since `rootDirectory` is not a valid property in `vercel.json`, you **must** configure it in the Vercel dashboard:
+**This is REQUIRED for your deployment to work!** Since your Next.js app is in the `frontend` subdirectory, you **must** set the root directory in Vercel:
 
-1. Go to your project settings in Vercel
-2. Navigate to **Settings** → **General**
-3. Under **Root Directory**, click **Edit**
-4. Set the root directory to: `frontend`
-5. Click **Save**
+1. Go to your Vercel project dashboard
+2. Click on **Settings** (gear icon)
+3. Go to **General** tab
+4. Scroll down to **Root Directory**
+5. Click **Edit**
+6. Enter: `frontend`
+7. Click **Save**
 
-Vercel will automatically:
-- Detect Next.js framework
-- Use default build commands (`npm run build`)
-- Set the correct output directory (`.next`)
+**After saving, you MUST redeploy:**
+- Either push a new commit to trigger a new deployment
+- Or go to **Deployments** tab and click **Redeploy** on the latest deployment
 
-**Note**: The root directory setting is project-wide and applies to all deployments.
+Vercel will then:
+- ✅ Detect Next.js framework automatically
+- ✅ Run `npm install` in the `frontend` directory
+- ✅ Run `npm run build` in the `frontend` directory  
+- ✅ Use `.next` as the output directory (Next.js default)
+- ✅ Handle all routing automatically (Next.js App Router)
+
+**Why this is needed:** Vercel looks for `package.json` and `next.config.ts` in the root by default. Since yours are in `frontend/`, Vercel can't find your Next.js app without this setting.
 
 ## Required Environment Variables
 
